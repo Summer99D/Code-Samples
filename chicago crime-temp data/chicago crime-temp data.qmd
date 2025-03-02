@@ -1,0 +1,462 @@
+
+---
+title: "DAP II: Final Project"
+author: "Genevieve Madigan, Summer Negahdar, Jenny Zhong"
+date: "Fall 2024"
+format: 
+  html:
+    code-fold: true
+    default-code-block-options:
+      eval: true
+      echo: false
+      include: true
+    html-head: |
+      <style>
+        body {
+          font-size: 3px; /* Extremely small text for body */
+        }
+        h1 {
+          font-size: 6px; /* Tiny font for main headers */
+        }
+        h2 {
+          font-size: 5px; /* Tiny font for subheaders */
+        }
+        h3 {
+          font-size: 4px; /* Smallest subheader */
+        }
+        pre, code {
+          font-size: 2px; /* Microscopic font for code and outputs */
+        }
+      </style>
+execute:
+  echo: false
+  warning: false
+  error: false
+---
+<div style="font-size: 12px;">
+
+##### Workflow and Team Members
+
+| Name               | GitHub Username  | Responsibility                      |
+|--------------------|------------------|-------------------------------------|
+| Genevieve Madigan | Madigan989       | Write-up and data visualization    |
+| Summer Negahdar   | Summer99D        | Creation of Shiny app and data visualization |
+| Jenny Zhong       | datapolicypython | Data cleaning and preparation      |
+
+</div>
+
+<div style="font-size: 12px;">
+
+##### Research Question: 
+
+Our project investigates the impact of temperature on crime rates in Chicago, focusing on both violent and non-violent crimes within specific ZIP codes. Building on prior research, we analyze data from 2010–2015 to test the temperature-aggression hypothesis and routine activity theory, which suggest that higher temperatures increase aggression and influence daily activities, creating more opportunities for crime. Understanding these dynamics can inform public safety strategies and resource allocation in response to climate patterns. This study extends findings from earlier research, testing conclusions across a period of varying political leadership and economic conditions. By exploring environmental factors' effects on criminal activity, we aim to provide insights into how climate patterns shape public safety challenges. This research highlights the potential role of temperature in influencing crime trends and offers practical applications for crime prevention and resource planning.
+</div>
+
+<div style="font-size: 12px;">
+
+##### Methodology
+We analyzed crime data (2010–2015) from the Chicago Data Portal and weather data from NOAA, aligning both to ZIP codes using ZCTA shapefiles. Python was used to convert coordinates into geospatial points, reproject data, and apply spatial buffers for accuracy. A spatial join mapped crime and weather data to ZIP codes, followed by cleaning, narrowing the timeframe, and standardizing formats, creating a framework to explore temperature's impact on crime in Chicago.
+</div>
+
+<div style="font-size: 12px;">
+
+##### Challenges
+The 30GB crime dataset was narrowed to 2010–2015, reducing it to 13GB but still requiring sampling for efficient processing in the Shiny app. Geospatial analysis and standardizing date formats posed additional challenges, but extensive preprocessing enabled seamless data integration for reliable visualizations like bar charts and choropleth maps.
+</div>
+
+<div style="font-size: 12px;">
+
+##### Crime data: Merging crime data together and merging crime data with ZIP Code
+```{python}
+import pandas as pd
+import geopandas as gpd
+import shapely
+import pandas as pd
+from shapely.geometry import Point
+import matplotlib.pyplot as plt
+import altair as alt
+import numpy as np
+import shiny
+```
+
+</div>
+
+<div style="font-size: 12px;">
+As mentioned above, after the presentation, we decided that we would shorten our datasets to 2010 - 2015 so it would be easier to load into our laptops. Subsequently, the code we have accommodates this change below. First, we load the CSV datasets into dataframes into python. Then we examine the columns of crime data. We then merge the datasets together so we have a crime rate dataset from 2010 - 2015 and examine it. We loaded ZIP code shapefiles, transformed spatial data to a consistent coordinate system (EPSG:4326), and combined it into a GeoDataFrame. Buffer zones enabled a spatial join to map crime data to ZIP codes, with the results saved as a CSV. The data was then cleaned by dropping irrelevant columns, reformatting dates, and reorganizing for clarity before saving.
+
+</div>
+
+```{python}
+#crimes10 = pd.read_csv('Crimes2010.csv')
+#crimes1112 = pd.read_csv('Crimes20112012.csv')
+#crimes131415 = pd.read_csv('Crimes201320142015.csv')
+```
+
+```{python}
+#print("2010 Columns:", crimes10.columns)
+```
+
+
+```{python}
+#totalcrimedata = pd.concat([crimes2010, crimes1112, crimes131415])
+#print(totalcrimedata.info())
+``` 
+
+```{python}
+#print(totalcrimedata.describe())
+```
+
+
+<div style="font-size: 12px;">
+
+##### Now we will convert the longitude and latitude in the crime data into ZIP Code by using an external shapefile and cross referencing this shapefile with our crime dataset
+Here, we are transforming spatial data into a consistent coordinate reference system (EPSG:4326), creating geometric points from longitude and latitude, and combining this data into a GeoDataFrame for spatial analysis. Then we are creating buffer zones around each geometry point in crime_gdf with a radius of 0.01 units, modifying the geometry column to reflect these expanded areas. We are then performing a spatial join to match crime_gdf (containing crime data) with zip_shapes based on their spatial intersection, and saving the resulting data to a CSV file.
+
+</div>
+
+```{python}
+#zip_shapes = gpd.read_file("/Users/jennyzhong/Documents/GitHub/final-Project-DAP-II/ZIP Code Shapefiles/tl_2015_us_zcta510.shp")
+```
+
+
+```{python}
+#zip_shapes = zip_shapes.to_crs("EPSG:4326")
+#print(zip_shapes.head())
+```
+
+```{python}
+#geometry = [Point(xy) for xy in zip(totalcrimedata['Longitude'], totalcrimedata['Latitude'])]
+```
+
+```{python}
+#crime_gdf = gpd.GeoDataFrame(totalcrimedata, geometry=geometry, crs="EPSG:4326") 
+#print(crime_gdf.head())
+```
+
+
+```{python}
+#crime_gdf['geometry'] = crime_gdf.geometry.buffer(0.01)
+```
+
+
+```{python}
+#matched_data = gpd.sjoin(crime_gdf, zip_shapes, how="left", predicate="intersects")
+
+#matched_data.to_csv("filtered_crime_data.csv", index=False)
+```
+
+```{python}
+#matched_data = pd.read_csv("filtered_crime_data.csv")
+#print(matched_data.head())
+```
+
+
+```{python}
+#matched_data.drop(columns=['ID', 'District', 'Community Area', 'CLASSFP10', 'MTFCC10', 'FUNCSTAT10', 'ALAND10', 'AWATER10', 'FBI Code', 'Updated On', 'GEOID10'], inplace=True)
+#print(matched_data.head())
+```
+
+```{python}
+#matched_data['Date'] = pd.to_datetime(matched_data['Date'], errors='coerce')
+```
+
+```{python}
+#matched_data['YearMonthDay'] = matched_data['Date'].dt.date
+#matched_data['Time'] = matched_data['Date'].dt.time
+```
+
+```{python}
+#columns = matched_data.columns.tolist()
+#columns.remove('YearMonthDay')
+#columns.insert(columns.index('Case Number') + 1, 'YearMonthDay')
+#matched_data = matched_data[columns]
+#print(matched_data.columns)
+```
+
+```{python}
+#matched_data.to_csv("filtered_crime_data.csv", index=False)
+```
+
+<div style="font-size: 12px;">
+
+##### Merging weather data together and merging weather data with ZIP code 
+
+We combined weather datasets from 2010–2015, converted the data into a GeoDataFrame, and performed a spatial join to align weather data with ZIP codes. After dropping irrelevant columns and refining the data, we saved the cleaned and structured weather dataset as a final CSV file.
+
+</div>
+
+```{python}
+#weather2010 = pd.read_csv('AT2010.csv')
+#weather2011 = pd.read_csv('AT2011.csv')
+#weather2012 = pd.read_csv('AT2012.csv')
+#weather2013 = pd.read_csv('AT2013.csv')
+#weather2014 = pd.read_csv('AT2014.csv')
+#weather2015 = pd.read_csv('AT2015.csv')
+```
+
+```{python}
+#total_weather = pd.concat([weather2010, weather2011, weather2012, weather2013, weather2014, weather2015], ignore_index=True)
+```
+
+```{python}
+#geometry = [Point(xy) for xy in zip(total_weather['LONGITUDE'], total_weather['LATITUDE'])]
+
+#weather_gdf = gpd.GeoDataFrame(total_weather, geometry=geometry)
+
+#weather_gdf.set_crs("EPSG:4326", inplace=True)
+
+#weather_gdf['geometry'] = weather_gdf.geometry.buffer(0.01)
+```
+
+
+```{python}
+#zip_shapefile = gpd.read_file('/Users/jennyzhong/Documents/GitHub/final-Project-DAP-II/ZIP_Code_Shapefiles/tl_2015_us_zcta510.shp')
+
+#zip_shapefile = zip_shapefile.to_crs("EPSG:4326")
+```
+
+```{python}
+#weather_with_zip = gpd.sjoin(weather_gdf, zip_shapefile, how='left', predicate='intersects')
+
+#print(weather_with_zip.head())
+```
+
+
+
+```{python}
+#weather_with_zip.drop(["CLASSFP10", "MTFCC10", "FUNCSTAT10", "ALAND10", "AWATER10", "GEOID10"], axis=1, inplace=True)
+
+#print(weather_with_zip)
+```
+
+```{python}
+#weather_with_zip.to_csv("weather_with_zip.csv", index=False)
+```
+
+
+```{python}
+#weatherfinal = pd.read_csv('/Users/jennyzhong/Documents/GitHub/final-Project-DAP-II/Final project/Weather_Data/weather_with_zip.csv')
+```
+
+
+
+```{python}
+#weatherfinal.head(10)
+#weatherfinal = weatherfinal.drop(columns=['TMAX', 'TMIN', 'ELEVATION', 'index_right'])
+```
+
+
+```{python}
+#weatherfinal.to_csv('/Users/jennyzhong/Documents/GitHub/final-Project-DAP-II/Final project/Weather_Data/weather_raw.csv', index=False)
+
+```
+
+##### Data Visualization
+
+```{python}
+final_crime_data = pd.read_csv(r'C:\Users\madig\Documents\Github\Year 2024-2025\final-Project-DAP-II\final_crime_data.csv')
+final_weather_data = pd.read_csv(r'C:\Users\madig\Documents\Github\Year 2024-2025\final-Project-DAP-II\final_weather_data.csv')
+```
+
+```{python}
+#final_crime_data = pd.read_csv(r'C:\Users\madig\Documents\Github\Year 2024-2025\final-Project-DAP-II\final_crime_data.csv')
+#final_crime_data['DATE'] = pd.to_datetime(final_crime_data['YearMonthDay'])
+#filtered_crime_data = final_crime_data[
+#    (final_crime_data['DATE'].dt.year >= 2010) & (final_crime_data['DATE'].dt.year <= 2015)
+#]
+#filtered_crime_data.to_csv('filtered_crime_data.csv', index=False)
+```
+
+<div style="font-size: 12px;">
+
+After filtering data from 2010–2015, we grouped and cleaned crime data, categorized crime types, merged it with weather data by ZIP code and date, and created visualizations including a bar chart, a GeoPandas timeseries, and a choropleth map. 
+
+</div>
+
+```{python}
+
+#filtered_weather_data = pd.read_csv(r'C:\Users\madig\Documents\Github\Year 2024-2025\final-Project-DAP-II\Final project\weatherfinal_cleaned.csv')
+#filtered_crime_data = pd.read_csv(r'C:\Users\madig\Documents\Github\Year 2024-2025\final-Project-DAP-II\Final project\filtered_crime_data.csv')
+```
+
+
+```{python}
+#unique_primary_types = filtered_crime_data['Primary Type'].unique()
+
+#def categorize_crime(crime_type):
+    #if crime_type in ['BATTERY', 'ASSAULT', 'ROBBERY', 'SEX OFFENSE', 
+                      #'CRIM SEXUAL ASSAULT', 'CRIMINAL SEXUAL ASSAULT', 
+                      #'HOMICIDE', 'KIDNAPPING', 'STALKING', 'INTIMIDATION']:
+        #return 'Violent Crimes'
+    #elif crime_type in ['MOTOR VEHICLE THEFT', 'THEFT', 'BURGLARY', 
+                        #'CRIMINAL DAMAGE', 'ARSON', 'CRIMINAL TRESPASS']:
+        #return 'Property Crimes'
+    #elif crime_type in ['WEAPONS VIOLATION', 'PUBLIC PEACE VIOLATION', 
+                        #'LIQUOR LAW VIOLATION', 'OBSCENITY', 
+                        #'PUBLIC INDECENCY', 'CONCEALED CARRY LICENSE VIOLATION']:
+       # return 'Public Order and Regulatory Violations'
+    #else:
+        #return 'Other Offenses'
+
+#filtered_crime_data['Crime Type Group'] = filtered_crime_data['Primary Type'].apply(categorize_crime)
+
+#columns_to_drop = [
+    #'YearMonthDay', 'Block', 'IUCR', 'Primary Type', 'Description',
+    #'Location Description', 'Arrest', 'Domestic', 'Beat', 'Ward',
+    #'FBI Code', 'X Coordinate', 'Y Coordinate', 'Year', 'Location',
+    #'ID', 'District', 'Community Area', 'index_right', 'INTPTLAT10', 
+    #'INTPTLON10'
+#]
+
+#filtered_crime_data = filtered_crime_data.drop(columns=columns_to_drop)
+
+#filtered_crime_data = filtered_crime_data.dropna(subset=['ZCTA5CE10'])
+#filtered_crime_data['ZCTA5CE10'] = filtered_crime_data['ZCTA5CE10'].astype(int)
+
+#filtered_crime_data.rename(columns={'ZCTA5CE10': 'ZIP_CODE'}, inplace=True)
+
+#print(filtered_crime_data.head())
+```
+
+```{python}
+#filtered_crime_data['DATE'] = pd.to_datetime(filtered_crime_data['DATE'])
+#filtered_weather_data['DATE'] = pd.to_datetime(filtered_weather_data['DATE'])
+
+#crime_summary = filtered_crime_data.groupby(['DATE', 'ZIP_CODE', 'Crime Type Group']).size().reset_index(name='Crime Count')
+
+
+#merged_data = pd.merge(crime_summary,
+    #filtered_weather_data[['DATE', 'ZIP_CODE', 'TAVG', 'geometry']], 
+    #on=['DATE', 'ZIP_CODE'],
+    #how='inner')
+
+#print(merged_data.head())
+
+#merged_data.to_csv(r'C:\Users\madig\Documents\Github\Year 2024-2025\final-Project-DAP-II\Final project\merged_data.csv', index=False)
+
+```
+
+```{python}
+#import pandas as pd
+#import matplotlib.pyplot as plt
+
+#filtered_weather_data['TAVG_bin'] = pd.cut(
+    #filtered_weather_data['TAVG'], 
+    #bins=range(int(filtered_weather_data['TAVG'].min()) // 15 * 15, 
+               #int(filtered_weather_data['TAVG'].max()) // 15 * 15 + 15, 15), 
+   # right=False
+#)
+
+#merged_data_with_bins = pd.merge(merged_data, filtered_weather_data[['DATE', 'TAVG_bin']], on='DATE',how='left')
+
+#crime_distribution = merged_data_with_bins.groupby(['TAVG_bin', 'Crime Type Group'])['Crime Count'].sum().unstack(fill_value=0)
+
+#crime_distribution.plot(kind='bar', stacked=True, figsize=(12, 7), width=0.9)
+#plt.title('Crime Distribution by Temperature Range (Binned by 15)')
+#plt.xlabel('Temperature Range (°F)')
+#plt.ylabel('Total Crime Count')
+#plt.xticks(rotation=45, ha='right')  
+#plt.legend(title='Crime Type Group')
+#plt.grid(axis='y', linestyle='--', alpha=0.7)
+#plt.tight_layout()
+#plt.show()
+
+```
+
+```{python}
+#import geopandas as gpd
+#import matplotlib.pyplot as plt
+#import pandas as pd
+
+#merged_data = gpd.GeoDataFrame(merged_data)
+
+#merged_data["DATE"] = pd.to_datetime(merged_data["DATE"])
+
+#time_series_data = merged_data.groupby(["DATE", "Crime Type Group"])["Crime Count"].sum().unstack()
+
+#plt.figure(figsize=(12, 6))
+#time_series_data.plot(ax=plt.gca(), marker='o')
+#plt.title("Time Series of Crime Counts by Type", fontsize=14)
+#plt.xlabel("Date", fontsize=12)
+#plt.ylabel("Crime Count", fontsize=12)
+#plt.legend(title="Crime Type Group")
+#plt.grid(True)
+#plt.tight_layout()
+#plt.show()
+
+```
+
+```{python}
+#from shapely.wkt import loads
+
+#merged_data['geometry'] = merged_data['geometry'].apply(loads)
+
+```
+
+
+```{python}
+#import matplotlib.pyplot as plt
+#import contextily as ctx
+
+#merged_data = merged_data.set_geometry("geometry")
+
+#if merged_data.crs is None:
+    #merged_data = merged_data.set_crs(epsg=4326)
+#merged_data = merged_data.to_crs(epsg=3857)
+
+#fig, ax = plt.subplots(figsize=(12, 8))
+
+#merged_data.plot(
+    #column="TAVG",
+    #cmap="coolwarm",
+    #legend=True,
+    #alpha=0.6,
+    #edgecolor="black",
+    #ax=ax,
+#)
+
+
+#merged_data.plot(
+    #ax=ax,
+    #color="red",
+    #markersize=merged_data["Crime Count"] * 2,
+   # alpha=0.7,
+    #label="Crime Locations",
+#)
+
+
+#ctx.add_basemap(ax, source=ctx.providers.CartoDB.Positron)
+
+#plt.title("Choropleth Map of Temp with Crime Locations", fontsize=14)
+#plt.legend()
+#plt.tight_layout()
+#plt.show()
+
+```
+
+![This bar chart demonstrates crime frequency across temperature ranges.](Picture/graph1.jpeg){width=30%}
+
+<div style="font-size: 8px; text-align: center;">
+This bar chart demonstrates crime frequency across temperature ranges, revealing a significant increase in crimes at higher temperatures. This aligns with routine activity theory, as warmer temperatures encourage outdoor activities, potentially increasing encounters between offenders and victims. Conversely, fewer crimes generally occur in colder temperature ranges, likely due to reduced outdoor activities and interactions.
+</div>
+
+
+![This chart illustrates the trend of crime occurrences over time.](Picture/Graph2.jpeg){width=30%}
+<div style="font-size: 8px; text-align: center;">
+This chart illustrates the trend of crime occurrences over time, highlighting a noticeable increase during the summer months, suggesting a seasonal pattern in criminal activity.
+</div>
+
+
+![This choropleth map displays crime locations in Chicago.](Picture/Graph3.jpeg){width=30%}
+
+<div style="font-size: 8px; text-align: center;">
+This choropleth map displays crime locations in Chicago, with points indicating crime occurrences and their color representing the temperature. Red points signify higher temperatures, while blue points indicate lower temperatures. The map shows that red points are more prominent, suggesting that crimes are more frequent during warmer weather. This highlights a possible connection between temperature and crime rates.
+</div>
+
+
+
+
+
+
+
+
